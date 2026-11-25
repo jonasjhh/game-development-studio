@@ -1,0 +1,85 @@
+# Workflow definition template. The O0 playbook (<id>.md) narrates the same steps for interactive use;
+# the O1 runner (`gdf run`) executes this file. Keep both in sync (checked by `gdf check workflows`).
+id: <workflow-id>                 # e.g. feature
+title: <Human readable title>
+version: 0.1.0
+status: draft                     # draft | approved
+owner: product-owner
+applies_to: [framework, games]    # scopes where this workflow may run
+tiers: [T1, T2]                   # tiers this workflow handles
+playbook: harness/workflows/<workflow-id>.md
+
+inputs:
+  issue: required
+  spec: required_for: [T1, T2]
+
+defaults:
+  budget: { max_usd: 10, max_minutes: 120 }
+
+steps:
+  - id: triage
+    role: planner
+    mode: product
+    writes: [issue]
+    produces: [tier, scope, workflow_confirmation]
+
+  - id: spec
+    role: planner
+    mode: design                  # or architect for framework
+    writes: [specs]
+    produces: [spec_path]
+    gate:
+      checks: ["gdf check docs --path {spec_path}"]
+
+  - id: approve-design
+    when: "tier == 'T2' or spec.has_creative_decisions"
+    human: owner                  # pauses; resumes on label `approved` or PR approval
+    produces: [approval]
+
+  - id: test-design
+    role: verifier
+    mode: test-design
+    worktree: true
+    writes: [tests, scenarios]
+    produces: [failing_tests]
+    gate:
+      checks: ["gdf verify --scope changed --expect-fail acceptance"]
+
+  - id: implement
+    role: implementer
+    mode: feature
+    worktree: true                # same branch as test-design, after it
+    writes: [source, docs, changelog_fragment]
+    gate:
+      checks: ["gdf verify --scope changed --level full"]
+    retry: { max: 2, on: [check_failed] }
+
+  - id: review
+    role: reviewer
+    executor_constraint: "vendor != steps.implement.vendor"
+    produces: [verdict]           # approve | request-changes | escalate
+    on:
+      request-changes: { goto: implement, max_loops: 3 }
+      escalate: { human: owner }
+
+  - id: playtest
+    when: "spec.has_method('playtest')"
+    role: verifier
+    mode: playtest-prep
+    then: { human: owner, produces: [playtest_verdict] }
+
+  - id: approve-merge
+    when: "tier == 'T2'"
+    human: owner
+
+  - id: integrate
+    run: "gdf merge --pr {pr} --queue"   # deterministic script, not an agent
+
+outputs:
+  - merged_pr
+  - run_reports
+  - changelog_fragment
+
+failure_policy:
+  blocked: comment_issue_and_label_needs_owner
+  budget_exceeded: stop_and_report
