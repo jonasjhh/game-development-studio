@@ -162,7 +162,7 @@ studio/
 │           ├── modules/<name>/    game-local modules (same anatomy as framework modules)
 │           ├── src/               game composition: scenes, presentation, glue
 │           ├── content/           data definitions (.tres / data files) with stable IDs
-│           ├── assets/            art/audio (LFS), each with provenance metadata
+│           ├── assets/            art/audio (LFS once adopted, §15), each with provenance metadata
 │           ├── scenarios/         game scenarios, replays, golden hashes
 │           └── tests/
 ├── knowledge/                     non-normative: godot/, patterns/, research/, lessons/
@@ -579,7 +579,7 @@ related: [ADR-foo-0003, FW-DET-002]
 | Test framework | **gdUnit4** (v6.2.x for Godot 4.7; v7 when stable) | [R] | GUT 9.x: simpler, also mature; gdUnit4 chosen for scene runner, input simulation, mocks, JUnit/HTML, C# support (future-proof for game-level C#) |
 | Lint/format | gdtoolkit 4.x (`gdlint`, `gdformat`) + custom `gdf` lints (imports, prefixes, determinism bans, layout) | [R] | Godot's own warnings as errors are the first line |
 | Repo tooling | Python ≥3.12 managed by **uv**; `gdf` CLI (Typer or argparse) | [R] | Must be installed (not present on this machine) |
-| VCS | Git + **Git LFS** (`*.png *.jpg *.psd *.blend *.glb *.fbx *.wav *.ogg *.mp3 *.ttf *.otf *.exr *.hdr`) | [R] | Configure before the first asset commit |
+| VCS | Git now; **Git LFS deferred** until the first binary asset (`*.png *.jpg *.psd *.blend *.glb *.fbx *.wav *.ogg *.mp3 *.ttf *.otf *.exr *.hdr`) | [E] | Repo is text-only today. LFS rules must be added to `.gitattributes` *before* the first binary commit, otherwise `git lfs migrate` (history rewrite) is needed. Free GitHub quota: 10 GiB storage + 10 GiB bandwidth/month; CI and agent checkouts count against bandwidth, so CI fetches LFS only in jobs that need assets |
 | Hosting/CI/work items | GitHub private repo, Actions, Issues + Projects; `gh` CLI | [E] | `gh` must be installed |
 | Primary agent CLI | Claude Code | [R] | |
 | Independent reviewer | Codex CLI (different vendor) | [R] | Gemini CLI; opencode with a different provider |
@@ -743,7 +743,7 @@ The full risk register (R1–R14) is in [stage 1 §7](stage-1-analysis.md#7-risk
 Each phase ends with explicit **exit criteria**, verified by the owner. No phase starts game design except P3.
 
 ### P0: Foundations
-- `git init`, Git LFS, `.gitattributes`/`.gitignore` extended, GitHub private repo, branch protection.
+- `git init`, `.gitattributes`/`.gitignore` extended, GitHub private repo, branch protection. Git LFS is deferred (§15): it is set up when the first binary asset is about to be committed.
 - Install and pin tooling: uv/Python, `gh`, gdtoolkit. Engine resolver `gdf godot`.
 - Migrate the current root Godot project to `framework/workbench/`; create the layout of §4.
 - Governance v1: constitution, L1 rule files (minimum set), decision-making rules, glossary.
@@ -769,6 +769,7 @@ Each phase ends with explicit **exit criteria**, verified by the owner. No phase
 ### P3: Game 001 concept and prototype
 - **First game selection happens here** (owner). `new-game` workflow: constitution, pillars, network-model ADR.
 - `prototype` workflow loops with playtest gates. `gdf_net` matures from the spike if the game needs it.
+- Set up Git LFS (§15) before the first art/audio asset is committed, if that has not already happened earlier.
 - **Exit:** owner go/no-go on a playable prototype. Prototype learnings recorded. Production backlog created.
 
 ### P4: Game 001 production + harvest + O1
@@ -839,7 +840,8 @@ Created in P0–P1. "Authority" = what the document can bind.
 | Plain folder names; per-scope ADRs/backlogs; `harness/` naming | [R] |
 | Five roles; risk tiers; verification-first; prototype lane; playtest gate | [R] |
 | Vendored framework + lockfile; single release train; maturity levels | [R] |
-| gdUnit4, gdtoolkit, Python/uv `gdf` CLI, Git LFS | [R] |
+| gdUnit4, gdtoolkit, Python/uv `gdf` CLI | [R] |
+| Git LFS deferred until the first binary asset; rules added to `.gitattributes` before that commit | [E] (2026-11-25) |
 | Claude Code primary + Codex CLI reviewer, via adapters | [R] (D4) |
 | Staged orchestration O0→O1→O2, no agent framework | [R] |
 | **Approval of this blueprint (status → approved)** | [A] |
